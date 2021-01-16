@@ -1,4 +1,5 @@
 import collections
+import sys
 import typing
 
 import attr
@@ -9,6 +10,7 @@ from ._error import (
     BadTypeError,
     CallableError,
     EmptyError,
+    LiteralError,
     TupleError,
     UnionError,
 )
@@ -34,6 +36,14 @@ try:
     from typing import ForwardRef
 except ImportError:
     from typing import _ForwardRef as ForwardRef  # type: ignore # Not in stubs
+
+if sys.version_info < (3, 8):
+    try:
+        from typing_extensions import Literal
+    except ImportError:
+        Literal = None
+else:
+    from typing import Literal
 
 
 class _StringAnnotationError(Exception):
@@ -113,14 +123,12 @@ def _validate_elements(attribute, value, expected_type):
         # These base_types happen when you have string annotations and cannot
         # be used in isinstance.
         raise _StringAnnotationError()
-
-    if base_type != typing.Union and not isinstance(  # type: ignore
-        value, base_type
-    ):
-        raise AttributeTypeError(value, attribute)
-
-    if base_type == typing.Union:  # type: ignore
+    elif base_type == Literal:  # type: ignore
+        _handle_literal(attribute, value, expected_type)
+    elif base_type == typing.Union:  # type: ignore
         _handle_union(attribute, value, expected_type)
+    elif not isinstance(value, base_type):
+        raise AttributeTypeError(value, attribute)
     elif base_type in SimilarTypes.List:
         _handle_set_or_list(attribute, value, expected_type)
     elif base_type in SimilarTypes.Dict:
@@ -246,6 +254,29 @@ def _handle_union(attribute, value, expected_type):
         except ValueError:
             pass
     raise UnionError(value, attribute.name, expected_type)
+
+
+def _handle_literal(attribute, value, expected_type):
+    flattened_literals = _flatten_literals(expected_type)
+
+    if not any(
+        value == literal and type(value) == type(literal)
+        for literal in flattened_literals
+    ):
+        raise LiteralError(attribute.name, value, flattened_literals)
+
+
+def _flatten_literals(literals):  # type: ignore
+    extracted_literals = literals.__args__
+
+    flattened_literals = []
+    for literal in extracted_literals:
+        base_type = _get_base_type(literal)
+        if base_type == Literal:  # type: ignore
+            flattened_literals.extend(_flatten_literals(literal))
+        else:
+            flattened_literals.append(literal)
+    return flattened_literals
 
 
 # -----------------------------------------------------------------------------

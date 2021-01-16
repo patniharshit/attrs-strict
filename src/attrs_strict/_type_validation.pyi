@@ -1,5 +1,14 @@
-import typing
 import attr
+import sys
+import typing
+
+if sys.version_info < (3, 8):
+    try:
+        from typing_extensions import Literal
+    except ImportError:
+        Literal = None
+else:
+    from typing import Literal
 
 def resolve_types(
     cls: type,
@@ -63,3 +72,11 @@ def _handle_union(
     value: typing.Any,
     expected_type: typing.Type[typing.Any],
 ) -> None: ...
+def _handle_literal(
+    attribute: attr.Attribute[typing.Any],
+    value: typing.Any,
+    expected_type: typing.Type[typing.Any],
+) -> None: ...
+def _flatten_literals(
+    literals: typing.Type[Literal],
+) -> typing.List[typing.Any]: ...

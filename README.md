@@ -103,7 +103,7 @@ names must be typing.List[typing.Tuple[str, str]] (got 123 that is a <class 'int
 
 Currently, there's support for simple types and types specified in the `typing`
 module: `List`, `Dict`, `DefaultDict`, `Set`, `Union`, `Tuple`, `NewType`,
-`Callable` and any combination of them. This means that you can specify nested
+`Callable`, `Literal` and any combination of them. This means that you can specify nested
 types like `List[List[Dict[int, str]]]` and the validation would check if
 attribute has the specific type.
 
